@@ -146,3 +146,84 @@ class Ax3DPose17Point(object):
     self.ax.set_ylim3d([-r+yroot, r+yroot])
 
     self.ax.set_aspect('equal')
+
+    
+""" 17-point pose (used in VIBE)
+0: 'nose', 1: 'leye', 2: 'reye', 3: 'lear', 4: 'rear', 5: 'lshoulder', 6: 'rshoulder', 
+7: 'lelbow', 8: 'relbow', 9: 'lwrist', 10: 'rwrist',
+11: 'lhip', 12: 'rhip', 13: 'lknee', 14: 'rknee', 15: 'lankle', 16: 'rankle'
+"""
+##### links w/ neck and pelvis #####
+JOINT_LINKS_VIBE17P = [
+    [10, 9], [9, 8], [8, 7], [7, 0],
+    [8, 14], [14, 15], [15, 16], 
+    [8, 11], [11, 12], [12, 13],
+    [0, 1], [1, 2], [2, 3], 
+    [0, 4], [4, 5], [5, 6]         
+]
+
+
+class Ax3DPose17PointVIBE(object):
+  def __init__(self, ax, r=1, lcolor="#3498db", rcolor="#e74c3c"):
+    """
+    Create a 3d pose visualizer that can be updated with new poses.
+
+    Args
+      ax: 3d axis to plot the 3d pose on
+      lcolor: String. Colour for the left part of the body
+      rcolor: String. Colour for the right part of the body
+    """        
+    self.joints = JOINT_LINKS_VIBE17P
+    self.num_points = 17
+    # Left / right indicator        
+    self.LR  = np.array([1,1,1,1, 0,0,0, 1,1,1, 0,0,0, 1,1,1], dtype=bool)
+    
+    self.I = np.array(self.joints)[:,0]
+    self.J = np.array(self.joints)[:,1]
+    
+    self.ax = ax 
+    self.r = r    
+
+    # Make connection matrix
+    self.plots = []
+    self.vals = np.zeros((self.num_points, 3))
+    for i in np.arange( len(self.I) ):
+      x = np.array( [self.vals[self.I[i], 0], self.vals[self.J[i], 0]] )
+      y = np.array( [self.vals[self.I[i], 1], self.vals[self.J[i], 1]] )
+      z = np.array( [self.vals[self.I[i], 2], self.vals[self.J[i], 2]] )      
+      self.plots.append(self.ax.plot(x, y, z, lw=2, c=lcolor if self.LR[i] else rcolor))      
+        
+
+  def update(self, channels, lcolor="#3498db", rcolor="#e74c3c"):
+    """
+    Update the plotted 3d pose.
+
+    Args
+      channels: 17-dim long np array. The pose to plot.
+      lcolor: String. Colour for the left part of the body.
+      rcolor: String. Colour for the right part of the body.
+    Returns
+      Nothing. Simply updates the axis with the new pose.
+    """
+
+    assert channels.shape == (17,3), "channels should be (17,3)"    
+        
+    self.vals = channels
+
+    for i in np.arange( len(self.I) ):
+      x = np.array( [self.vals[self.I[i], 0], self.vals[self.J[i], 0]] )
+      y = np.array( [self.vals[self.I[i], 1], self.vals[self.J[i], 1]] )
+      z = np.array( [self.vals[self.I[i], 2], self.vals[self.J[i], 2]] )
+      self.plots[i][0].set_xdata(x)
+      self.plots[i][0].set_ydata(y)
+      self.plots[i][0].set_3d_properties(z)
+      self.plots[i][0].set_color(lcolor if self.LR[i] else rcolor)
+
+    r = self.r
+    xroot, yroot, zroot = self.vals[0,0], self.vals[0,1], self.vals[0,2]
+    self.ax.set_xlim3d([-r+xroot, r+xroot])
+    self.ax.set_zlim3d([-r*r+zroot, r+zroot])
+    self.ax.set_ylim3d([-r+yroot, r+yroot])
+
+    self.ax.set_aspect('equal')
+
